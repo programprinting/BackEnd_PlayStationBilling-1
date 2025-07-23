@@ -29,10 +29,8 @@
             </div>
         </div>
         <h2>TV Controller</h2>
-        <label>IP Address</label>
-        <input type="text" id="ip" placeholder="192.168.200.226" value="192.168.200.226">
-        <label>IP Address</label>
-        <input type="text" id="ip" placeholder="192.168.200.226" value="192.168.200.226">
+       <label>IP Address</label>
+       <input type="text" id="ip" placeholder="192.168.200.226" value="192.168.200.226" style="margin-bottom: 16px;">
         <label>Port</label>
         <input type="number" id="port" placeholder="5555" value="5555">
         <label>Method</label>
@@ -40,59 +38,57 @@
             <option value="adb">ADB</option>
             <option value="tv_server">TV Server</option>
         </select>
-        <div class="btn-group">
-            <button class="on" onclick="sendAction('wake')">Hidupkan</button>
-            <button class="off" onclick="sendAction('sleep')">Matikan</button>
+        <div class="card" style="background:#f9f9f9;padding:18px 14px 14px 14px;border-radius:8px;box-shadow:0 1px 6px rgba(0,0,0,0.07);margin-bottom:18px;">
+            <h3 style="text-align:center;margin:0 0 12px 0;font-size:20px;color:#333;">Kontrol TV</h3>
+            <div class="btn-group" style="margin-bottom:10px;">
+                <button class="on" style="background:#4caf50;color:#fff;box-shadow:0 2px 6px rgba(76,175,80,0.12);font-size:18px;" onclick="sendAction('power', true)">Power</button>
+            </div>
+            <div class="result" id="result"></div>
         </div>
-            <div id="adb-status" style="margin-top:8px;font-weight:bold;color:#333;"></div>
+        <div class="card" style="background:#f9f9f9;padding:18px 14px 14px 14px;border-radius:8px;box-shadow:0 1px 6px rgba(0,0,0,0.07);">
+            <h3 style="text-align:center;margin:0 0 12px 0;font-size:20px;color:#333;">Timer (Countdown)</h3>
+            <div class="timer-group" style="justify-content:center;align-items:center;gap:10px;margin-bottom:12px;">
+                <input type="number" id="timer-min" min="0" max="99" placeholder="mm" value="00" style="width:60px;text-align:center;font-size:18px;"> :
+                <input type="number" id="timer-sec" min="0" max="59" placeholder="ss" value="00" style="width:60px;text-align:center;font-size:18px;">
+                <button onclick="startTimer()" style="background:#2196f3;color:#fff;width:80px;font-size:16px;">Start</button>
+                <button onclick="stopTimer()" style="background:#bbb;color:#fff;width:80px;font-size:16px;">Stop</button>
+            </div>
+            <div class="countdown" id="countdown" style="text-align:center;font-size:28px;margin-bottom:8px;font-weight:bold;color:#2196f3;">00:00</div>
         </div>
-        <div style="margin-top:20px; text-align:center;">
-            <button onclick="window.location.href='timer.html'" style="background:#2196f3;color:#fff;width:100%;padding:12px 0;border:none;border-radius:4px;font-size:16px;cursor:pointer;">Timer</button>
-        </div>
-        <div class="result" id="result"></div>
+
     </div>
     <script>
-        document.getElementById('check-adb').onclick = function() {
-            const ip = document.getElementById('ip').value;
-            const port = document.getElementById('port').value;
-            if (!ip || !port) {
-                document.getElementById('adb-status').innerText = 'IP dan port harus diisi!';
-                return;
-            }
-            document.getElementById('adb-status').innerText = 'Mengecek status...';
-            fetch(`/adb-status?ip=${ip}&port=${port}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.error) {
-                        document.getElementById('adb-status').innerText = 'Error: ' + data.message;
-                    } else {
-                        document.getElementById('adb-status').innerText = 'Status ADB: ' + data.adb_status;
-                        if (data.adb_status === 'offline') {
-                            document.getElementById('adb-status').innerHTML += '<br><button id="reconnect-adb" style="margin-top:8px;background:#2196f3;color:#fff;padding:6px 18px;border:none;border-radius:4px;font-size:14px;cursor:pointer;">Reconnect</button>';
-                            document.getElementById('reconnect-adb').onclick = function() {
-                                document.getElementById('adb-status').innerText = 'Mencoba reconnect...';
-                                fetch(`/ping/${ip}?port=${port}&method=adb`)
-                                    .then(res => res.json())
-                                    .then(data2 => {
-                                        if (data2.status === 'online') {
-                                            document.getElementById('adb-status').innerText = 'Reconnect berhasil. Status ADB: online';
-                                        } else {
-                                            document.getElementById('adb-status').innerText = 'Reconnect gagal. Status ADB: offline';
-                                        }
-                                    })
-                                    .catch(err => {
-                                        document.getElementById('adb-status').innerText = 'Error: ' + err;
-                                    });
-                            };
-                        }
-                    }
-                })
-                .catch(err => {
-                    document.getElementById('adb-status').innerText = 'Error: ' + err;
-                });
-        };
+        let timerInterval = null;
+        let remaining = 0;
+        function pad(n) { return n.toString().padStart(2, '0'); }
+        function updateCountdown() {
+            const min = Math.floor(remaining / 60);
+            const sec = remaining % 60;
+            document.getElementById('countdown').innerText = pad(min) + ':' + pad(sec);
+        }
+        function startTimer() {
+            const min = parseInt(document.getElementById('timer-min').value) || 0;
+            const sec = parseInt(document.getElementById('timer-sec').value) || 0;
+            remaining = min * 60 + sec;
+            if (remaining <= 0) return;
+            updateCountdown();
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                remaining--;
+                updateCountdown();
+                if (remaining <= 0) {
+                    clearInterval(timerInterval);
+                    sendAction('power', true); // langsung jalankan tanpa konfirmasi
+                }
+            }, 1000);
+        }
+        function stopTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            document.getElementById('countdown').innerText = '00:00';
+        }
 
-        function sendAction(action) {
+
+        function sendAction(action, skipConfirm) {
             const ip = document.getElementById('ip').value;
             const port = document.getElementById('port').value;
             const method = document.getElementById('method').value;
@@ -100,61 +96,37 @@
                 document.getElementById('result').innerText = 'IP dan port harus diisi!';
                 return;
             }
-            let confirmMsg = '';
-            if (action === 'wake') confirmMsg = 'Yakin ingin menghidupkan TV?';
-            else if (action === 'sleep') confirmMsg = 'Yakin ingin mematikan TV?';
-            if (confirmMsg) {
-                Swal.fire({
-                    title: 'Konfirmasi',
-                    text: confirmMsg,
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonText: 'Ya',
-                    cancelButtonText: 'Batal'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        doSend();
-                    }
-                });
-            } else {
-                doSend();
-            }
-            function doSend() {
-                fetch(`/tv/${ip}/${action}?port=${port}&method=${method}`)
+            if (skipConfirm === true) {
+                fetch(`/tv/${ip}/power?port=${port}&method=${method}`)
                     .then(res => res.json())
                     .then(data => {
                         document.getElementById('result').innerText = JSON.stringify(data);
-                        if (data && data.error) {
-                            Swal.fire({
-                                title: 'Gagal',
-                                text: 'Gagal menjalankan perintah. Coba lagi?',
-                                icon: 'error',
-                                showCancelButton: true,
-                                confirmButtonText: 'Coba Lagi',
-                                cancelButtonText: 'Batal'
-                            }).then((result) => {
-                                if (result.isConfirmed) {
-                                    doSend();
-                                }
-                            });
-                        }
                     })
                     .catch(err => {
                         document.getElementById('result').innerText = 'Error: ' + err;
-                        Swal.fire({
-                            title: 'Gagal',
-                            text: 'Terjadi error. Coba lagi?',
-                            icon: 'error',
-                            showCancelButton: true,
-                            confirmButtonText: 'Coba Lagi',
-                            cancelButtonText: 'Batal'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                doSend();
-                            }
-                        });
                     });
+                return;
             }
+            // Hanya tampilkan konfirmasi jika skipConfirm tidak true (manual klik)
+            Swal.fire({
+                title: 'Konfirmasi',
+                text: 'Yakin ingin menekan tombol Power TV?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Ya',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/tv/${ip}/power?port=${port}&method=${method}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            document.getElementById('result').innerText = JSON.stringify(data);
+                        })
+                        .catch(err => {
+                            document.getElementById('result').innerText = 'Error: ' + err;
+                        });
+                }
+            });
         }
     </script>
     <script>
@@ -214,8 +186,8 @@
 
         // Update status TV setelah aksi power
         const oldSendAction = sendAction;
-        sendAction = function(action) {
-            oldSendAction(action);
+        sendAction = function(action, skipConfirm) {
+            oldSendAction(action, skipConfirm);
             setTimeout(checkTvStatus, 1200); // Delay sedikit agar status update
         }
     </script>
