@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TV Controller</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }
+        .container { max-width: 400px; margin: 60px auto; background: #fff; padding: 32px 24px 24px 24px; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+        h2 { text-align: center; margin-bottom: 24px; }
+        label { display: block; margin-bottom: 8px; }
+        input[type=text], input[type=number] { width: 100%; padding: 8px; margin-bottom: 16px; border: 1px solid #ccc; border-radius: 4px; }
+        .btn-group { display: flex; justify-content: space-between; }
+        button { flex: 1; padding: 12px 0; margin: 0 4px; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; transition: background 0.2s; }
+        .on { background: #4caf50; color: #fff; }
+        .off { background: #f44336; color: #fff; }
+        .result { margin-top: 20px; text-align: center; font-weight: bold; }
+        .timer-group { display: flex; gap: 8px; margin-bottom: 16px; }
+        .timer-group input { width: 60px; text-align: center; font-size: 18px; }
+        .timer-label { margin-bottom: 4px; }
+        .countdown { text-align: center; font-size: 24px; margin-bottom: 8px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>TV Controller</h2>
+        <label>IP Address</label>
+        <input type="text" id="ip" placeholder="192.168.200.226" value="192.168.200.226">
+        <label>Port</label>
+        <input type="number" id="port" placeholder="5555" value="5555">
+        <label>Method</label>
+        <select id="method">
+            <option value="adb">ADB</option>
+            <option value="tv_server">TV Server</option>
+        </select>
+        <div class="btn-group">
+            <button class="on" onclick="sendAction('wake')">Hidupkan</button>
+            <button class="off" onclick="sendAction('sleep')">Matikan</button>
+        </div>
+        <hr style="margin:24px 0 16px 0;">
+        <div class="timer-label">Timer (Countdown)</div>
+        <div class="timer-group">
+            <input type="number" id="timer-min" min="0" max="99" placeholder="mm" value="00"> :
+            <input type="number" id="timer-sec" min="0" max="59" placeholder="ss" value="00">
+            <button onclick="startTimer()" style="background:#2196f3;color:#fff;width:80px;">Start</button>
+            <button onclick="stopTimer()" style="background:#bbb;color:#fff;width:80px;">Stop</button>
+        </div>
+        <div class="countdown" id="countdown">00:00</div>
+        <div class="result" id="result"></div>
+    </div>
+    <script>
+        let timerInterval = null;
+        let remaining = 0;
+        function pad(n) { return n.toString().padStart(2, '0'); }
+        function updateCountdown() {
+            const min = Math.floor(remaining / 60);
+            const sec = remaining % 60;
+            document.getElementById('countdown').innerText = pad(min) + ':' + pad(sec);
+        }
+        function startTimer() {
+            const min = parseInt(document.getElementById('timer-min').value) || 0;
+            const sec = parseInt(document.getElementById('timer-sec').value) || 0;
+            remaining = min * 60 + sec;
+            if (remaining <= 0) return;
+            updateCountdown();
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                remaining--;
+                updateCountdown();
+                if (remaining <= 0) {
+                    clearInterval(timerInterval);
+                    sendAction('sleep');
+                }
+            }, 1000);
+        }
+        function stopTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            document.getElementById('countdown').innerText = '00:00';
+        }
+        function sendAction(action) {
+            const ip = document.getElementById('ip').value;
+            const port = document.getElementById('port').value;
+            const method = document.getElementById('method').value;
+            if (!ip || !port) {
+                document.getElementById('result').innerText = 'IP dan port harus diisi!';
+                return;
+            }
+            fetch(`/tv/${ip}/${action}?port=${port}&method=${method}`)
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('result').innerText = JSON.stringify(data);
+                })
+                .catch(err => {
+                    document.getElementById('result').innerText = 'Error: ' + err;
+                });
+        }
+    </script>
+</body>
+</html>
