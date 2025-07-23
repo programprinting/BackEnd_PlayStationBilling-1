@@ -41,8 +41,7 @@
             <option value="tv_server">TV Server</option>
         </select>
         <div class="btn-group">
-            <button class="on" onclick="sendAction('wake')">Hidupkan</button>
-            <button class="off" onclick="sendAction('sleep')">Matikan</button>
+            <button class="on" onclick="sendAction('power')">Power</button>
         </div>
             <div id="adb-status" style="margin-top:8px;font-weight:bold;color:#333;"></div>
         </div>
@@ -100,61 +99,51 @@
                 document.getElementById('result').innerText = 'IP dan port harus diisi!';
                 return;
             }
-            let confirmMsg = '';
-            if (action === 'wake') confirmMsg = 'Yakin ingin menghidupkan TV?';
-            else if (action === 'sleep') confirmMsg = 'Yakin ingin mematikan TV?';
-            if (confirmMsg) {
-                Swal.fire({
-                    title: 'Konfirmasi',
-                    text: confirmMsg,
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonText: 'Ya',
-                    cancelButtonText: 'Batal'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        doSend();
-                    }
-                });
-            } else {
-                doSend();
-            }
-            function doSend() {
-                fetch(`/tv/${ip}/${action}?port=${port}&method=${method}`)
-                    .then(res => res.json())
-                    .then(data => {
-                        document.getElementById('result').innerText = JSON.stringify(data);
-                        if (data && data.error) {
+            Swal.fire({
+                title: 'Konfirmasi',
+                text: 'Yakin ingin menekan tombol Power TV?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Ya',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/tv/${ip}/power?port=${port}&method=${method}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            document.getElementById('result').innerText = JSON.stringify(data);
+                            if (data && data.error) {
+                                Swal.fire({
+                                    title: 'Gagal',
+                                    text: 'Gagal menjalankan perintah. Coba lagi?',
+                                    icon: 'error',
+                                    showCancelButton: true,
+                                    confirmButtonText: 'Coba Lagi',
+                                    cancelButtonText: 'Batal'
+                                }).then((result) => {
+                                    if (result.isConfirmed) {
+                                        sendAction('power');
+                                    }
+                                });
+                            }
+                        })
+                        .catch(err => {
+                            document.getElementById('result').innerText = 'Error: ' + err;
                             Swal.fire({
                                 title: 'Gagal',
-                                text: 'Gagal menjalankan perintah. Coba lagi?',
+                                text: 'Terjadi error. Coba lagi?',
                                 icon: 'error',
                                 showCancelButton: true,
                                 confirmButtonText: 'Coba Lagi',
                                 cancelButtonText: 'Batal'
                             }).then((result) => {
                                 if (result.isConfirmed) {
-                                    doSend();
+                                    sendAction('power');
                                 }
                             });
-                        }
-                    })
-                    .catch(err => {
-                        document.getElementById('result').innerText = 'Error: ' + err;
-                        Swal.fire({
-                            title: 'Gagal',
-                            text: 'Terjadi error. Coba lagi?',
-                            icon: 'error',
-                            showCancelButton: true,
-                            confirmButtonText: 'Coba Lagi',
-                            cancelButtonText: 'Batal'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                doSend();
-                            }
                         });
-                    });
-            }
+                }
+            });
         }
     </script>
     <script>
@@ -213,11 +202,7 @@
         };
 
         // Update status TV setelah aksi power
-        const oldSendAction = sendAction;
-        sendAction = function(action) {
-            oldSendAction(action);
-            setTimeout(checkTvStatus, 1200); // Delay sedikit agar status update
-        }
+        // Pengecekan status TV setelah aksi power dihilangkan sesuai permintaan
     </script>
 </body>
 </html>
