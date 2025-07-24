@@ -1,3 +1,10 @@
+const express = require('express');
+const { exec } = require('child_process');
+
+const app = express();
+const port = 3001;
+app.use(express.json());
+
 // Endpoint untuk eksekusi perintah custom dari frontend
 app.post('/custom-cmd', (req, res) => {
     const { cmd } = req.body;
@@ -7,12 +14,6 @@ app.post('/custom-cmd', (req, res) => {
         res.json({ success: true, output: stdout.trim() });
     });
 });
-const express = require('express');
-const { exec } = require('child_process');
-
-const app = express();
-const port = 3001;
-app.use(express.json());
 
 // Endpoint untuk cek status TV (hidup/mati)
 app.get('/tv-status/:ip', (req, res) => {
