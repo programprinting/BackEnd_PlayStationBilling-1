@@ -129,13 +129,43 @@ app.get('/tv/:ip/:action', (req, res) => {
     const { port, method } = req.query;
 
     if (method === 'adb') {
-        // Tombol Power: keyevent 26
-        const keycode = 26;
+        let keycode;
+        if (action === 'sleep' || action === 'wake' || action === 'power') keycode = 26;
+        else return res.json({ error: true, message: 'Unknown action' });
+
         const needConnect = lastAdbConnected.ip !== ip || lastAdbConnected.port !== port;
-        const doKeyevent = () => {
+        const doKeyevent = (cb) => {
             exec(`adb shell input keyevent ${keycode}`, (err, stdout, stderr) => {
                 if (err) {
-                    return res.json({ error: true, message: stderr || err.message });
+                    if (action === 'wake') {
+                        // Jika gagal hidupkan, coba reconnect lalu cek status
+                        exec(`adb connect ${ip}:${port}`, (err2, stdout2, stderr2) => {
+                            if (err2 || (stderr2 && stderr2.includes('failed'))) {
+                                return res.json({ error: true, message: 'Gagal reconnect ADB: ' + (stderr2 || err2.message) });
+                            }
+                            // Cek status ADB
+                            exec('adb devices', (err3, stdout3, stderr3) => {
+                                if (err3) {
+                                    return res.json({ error: true, message: 'Gagal cek status ADB: ' + (stderr3 || err3.message) });
+                                }
+                                const deviceLine = stdout3.split('\n').find(line => line.includes(ip));
+                                if (deviceLine && deviceLine.includes('device')) {
+                                    // Sudah online, ulangi perintah hidupkan
+                                    exec(`adb shell input keyevent ${keycode}`, (err4, stdout4, stderr4) => {
+                                        if (err4) {
+                                            return res.json({ error: true, message: 'Gagal hidupkan TV setelah reconnect: ' + (stderr4 || err4.message) });
+                                        }
+                                        return res.json({ success: true, used_method: 'adb', reconnected: true });
+                                    });
+                                } else {
+                                    return res.json({ error: true, message: 'ADB tetap offline setelah reconnect.' });
+                                }
+                            });
+                        });
+                        return;
+                    } else {
+                        return res.json({ error: true, message: stderr || err.message });
+                    }
                 }
                 res.json({ success: true, used_method: 'adb' });
             });
